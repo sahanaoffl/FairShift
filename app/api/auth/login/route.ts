@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { createSessionToken, SESSION_COOKIE } from "@/src/lib/auth";
+import { createSessionToken, hasSessionSecret, SESSION_COOKIE } from "@/src/lib/session-token";
 import { getRepository } from "@/src/lib/repo";
 import { getAdminPinHash } from "@/src/lib/seed";
 import { rateLimit } from "@/src/lib/rate-limit";
@@ -14,6 +14,10 @@ const loginSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  if (!hasSessionSecret()) {
+    console.error("Login unavailable: SESSION_SECRET must be configured with at least 32 characters.");
+    return NextResponse.json({ error: "Sign in is temporarily unavailable." }, { status: 503 });
+  }
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (!rateLimit(`login:${ip}`, 8, 60_000)) return NextResponse.json({ error: "Too many attempts. Try again in one minute." }, { status: 429 });
   const input = loginSchema.safeParse(await request.json().catch(() => undefined));

@@ -41,8 +41,9 @@ export function LoginForm({ role }: { role: "worker" | "admin" }) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role, organisationId, pin, ...(role === "worker" ? { workerId } : {}) }),
       });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error ?? "Sign in failed.");
+      const result = await response.json().catch(() => undefined) as { error?: string } | undefined;
+      if (!response.ok) throw new Error(result?.error ?? `Sign in failed (HTTP ${response.status}).`);
+      if (!result) throw new Error("Sign in returned an invalid response. Please try again.");
       router.push(role === "worker" ? "/worker" : "/admin");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Sign in failed.");
